@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>학교 불편 사항 신고</title>
+  <style>
+    :root {
+      --bg: #e4e4e6;
+      --panel: #f5f5f6;
+      --line: #b9b9bd;
+      --text: #2b2b2e;
+      --muted: #6b6b70;
+      --accent: #3c3c41;
+      --accent-hover: #232326;
+      --ok: #4a4a4f;
+      --err: #7a2e2e;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+      line-height: 1.6;
+    }
+    main {
+      width: 100%;
+      max-width: 520px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 32px 28px;
+    }
+    h1 { margin: 0 0 6px; font-size: 1.5rem; letter-spacing: -0.02em; }
+    p.desc { margin: 0 0 28px; color: var(--muted); font-size: 0.95rem; }
+    fieldset { border: 0; padding: 0; margin: 0 0 24px; }
+    legend, label.title { display: block; margin-bottom: 10px; font-weight: 600; font-size: 0.95rem; padding: 0; }
+
+    .types { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .types input { position: absolute; opacity: 0; pointer-events: none; }
+    .types label {
+      display: block;
+      text-align: center;
+      padding: 12px 0;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: #fff;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 0.95rem;
+      transition: background .15s, color .15s, border-color .15s;
+    }
+    .types label:hover { border-color: var(--accent); }
+    .types input:checked + label {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+      font-weight: 600;
+    }
+    .types input:focus-visible + label { outline: 3px solid #8d8d92; outline-offset: 2px; }
+
+    textarea {
+      width: 100%;
+      min-height: 160px;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: #fff;
+      color: var(--text);
+      font: inherit;
+      resize: vertical;
+    }
+    textarea:focus { outline: 3px solid #8d8d92; outline-offset: 1px; border-color: var(--accent); }
+    .count { text-align: right; font-size: 0.8rem; color: var(--muted); margin-top: 4px; }
+
+    button {
+      width: 100%;
+      margin-top: 8px;
+      padding: 14px;
+      border: 0;
+      border-radius: 4px;
+      background: var(--accent);
+      color: #fff;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    button:hover:not(:disabled) { background: var(--accent-hover); }
+    button:focus-visible { outline: 3px solid #8d8d92; outline-offset: 2px; }
+    button:disabled { background: #9a9a9f; cursor: not-allowed; }
+
+    #msg { margin-top: 16px; min-height: 1.5em; font-size: 0.92rem; text-align: center; }
+    #msg.ok { color: var(--ok); }
+    #msg.err { color: var(--err); }
+
+    @media (max-width: 420px) {
+      main { padding: 24px 18px; }
+      .types { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>학교 불편 사항 신고</h1>
+    <p class="desc">불편했던 점을 알려 주세요. 유형을 고르고 내용을 적어 제출하면 됩니다.</p>
+
+    <form id="form" novalidate>
+      <fieldset>
+        <legend>신고 유형</legend>
+        <div class="types">
+          <div><input type="radio" name="type" id="t1" value="시설"><label for="t1">시설</label></div>
+          <div><input type="radio" name="type" id="t2" value="매점"><label for="t2">매점</label></div>
+          <div><input type="radio" name="type" id="t3" value="화장실"><label for="t3">화장실</label></div>
+          <div><input type="radio" name="type" id="t4" value="기타"><label for="t4">기타</label></div>
+        </div>
+      </fieldset>
+
+      <label class="title" for="content">내용</label>
+      <textarea id="content" maxlength="1000" placeholder="어디에서, 어떤 점이 불편한지 구체적으로 적어 주세요."></textarea>
+      <div class="count"><span id="cnt">0</span> / 1000</div>
+
+      <button type="submit" id="submitBtn">신고 제출</button>
+      <div id="msg" role="status" aria-live="polite"></div>
+    </form>
+  </main>
+
+  <script>
+    const form = document.getElementById('form');
+    const content = document.getElementById('content');
+    const btn = document.getElementById('submitBtn');
+    const msg = document.getElementById('msg');
+    const cnt = document.getElementById('cnt');
+
+    content.addEventListener('input', () => { cnt.textContent = content.value.length; });
+
+    function show(text, kind) {
+      msg.textContent = text;
+      msg.className = kind || '';
+    }
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const checked = form.querySelector('input[name="type"]:checked');
+      const text = content.value.trim();
+
+      if (!checked) return show('신고 유형을 선택해 주세요.', 'err');
+      if (!text) return show('내용을 입력해 주세요.', 'err');
+
+      btn.disabled = true;
+      btn.textContent = '제출 중...';
+      show('');
+
+      google.script.run
+        .withSuccessHandler(() => {
+          form.reset();
+          cnt.textContent = '0';
+          btn.disabled = false;
+          btn.textContent = '신고 제출';
+          show('신고가 접수되었습니다. 감사합니다.', 'ok');
+        })
+        .withFailureHandler((err) => {
+          btn.disabled = false;
+          btn.textContent = '신고 제출';
+          show('제출하지 못했습니다. ' + (err && err.message ? err.message : '잠시 후 다시 시도해 주세요.'), 'err');
+        })
+        .submitReport(checked.value, text);
+    });
+  </script>
+</body>
+</html>
